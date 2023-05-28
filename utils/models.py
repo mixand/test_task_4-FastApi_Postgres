@@ -1,5 +1,5 @@
-from typing import Union
-from pydantic import BaseModel, Field
+from typing import Union, Optional
+from pydantic import BaseModel, Field, root_validator
 from sqlalchemy import select
 
 from db import location_db, database, cargo_db, car_db
@@ -25,6 +25,23 @@ class UpdateCargo(BaseModel):
     id: int
     weight: int = Field(ge=1, le=1000)
     description: str
+
+
+class FilterCargos(BaseModel):
+    weight_min: Optional[int] = Field(None, ge=1, le=1000)
+    weight_max: Optional[int] = Field(None, ge=1, le=1000)
+    miles_min: Optional[int] = None
+    miles_max: Optional[int] = None
+
+    @root_validator
+    def validate_values(cls, values):
+        if values['weight_min'] is not None and values['weight_max'] is not None and values['weight_max'] <= values[
+            'weight_min']:
+            raise ValueError('weight_max must be greater than weight_min')
+        if values['miles_min'] is not None and values['miles_max'] is not None and values['miles_max'] <= values[
+            'miles_min']:
+            raise ValueError('miles_max must be greater than miles_min')
+        return values
 
 
 class CargoDb:
@@ -67,7 +84,6 @@ class CargoDb:
             dict_post)
         await database.execute(query=query)
 
-
     @staticmethod
     async def del_info_about_one_cargo(id: int) -> None:
         query = cargo_db.delete().where(
@@ -82,6 +98,14 @@ class LocationDb:
         result = await database.fetch_one(query)
         if result is not None:
             result = dict(result)
+        return result
+
+    @staticmethod
+    async def get_zip_column() -> Union[dict, None]:
+        query = select(location_db.columns.zip)
+        result = await database.fetch_all(query)
+        if result is not None:
+            result = [dict(i)["zip"] for i in result]
         return result
 
 
@@ -110,3 +134,11 @@ class CarDb:
             car_db.columns.id == id).values(
             dict_post)
         await database.execute(query=query)
+
+    @staticmethod
+    async def get_id_column() -> Union[dict, None]:
+        query = select(car_db.columns.id)
+        result = await database.fetch_all(query)
+        if result is not None:
+            result = [dict(i)["id"] for i in result]
+        return result

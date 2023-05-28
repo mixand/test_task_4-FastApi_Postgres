@@ -3,7 +3,7 @@ from starlette.responses import JSONResponse
 from geopy.distance import geodesic
 
 from logs_info import logger
-from utils.models import InputWeight, LocationDb, OutputWeight, CargoDb, CarDb, UpdateCar, UpdateCargo
+from utils.models import InputWeight, LocationDb, OutputWeight, CargoDb, CarDb, UpdateCar, UpdateCargo, FilterCargos
 
 router = APIRouter(
     prefix="/database",
@@ -40,7 +40,7 @@ async def get_list_all_cargos():
     try:
         list_cargos = await CargoDb.get_all_cargos()
         list_cars = await CarDb.get_all_cars()
-        if list_cargos and list_cars != []:
+        if list_cargos != [] and list_cars != []:
             list_cargos_info = []
             for i in list_cargos:
                 car_counter = 0
@@ -130,3 +130,54 @@ async def delete_info_about_one_cargo(id: int):
         return {"detail": "data deleted"}
     except Exception:
         logger.error("delete_info_about_one_cargo has error", exc_info=True)
+
+@router.post("/filter_cargos", status_code=200, response_model=list)
+async def filter_weight_miles_cargos(input_data: FilterCargos):
+    try:
+        list_cargos = await CargoDb.get_all_cargos()
+        list_cars = await CarDb.get_all_cars()
+        if list_cargos != [] and list_cars != []:
+            list_cargos_info = []
+            for i in list_cargos:
+                car_counter = 0
+                loc_cargo = (float(i['loc_pick_up_lat']), float(i['loc_pick_up_lng']))
+                for j in list_cars:
+                    loc_car = (float(j['loc_lat']), float(j['loc_lng']))
+                    if input_data.miles_min is not None and input_data.miles_max is not None:
+                        if input_data.miles_min <= geodesic(loc_cargo, loc_car).miles <= input_data.miles_max:
+                            car_counter += 1
+                    elif input_data.miles_min is None and input_data.miles_max is not None:
+                        if geodesic(loc_cargo, loc_car).miles <= input_data.miles_max:
+                            car_counter += 1
+                    elif input_data.miles_min is not None and input_data.miles_max is None:
+                        if input_data.miles_min <= geodesic(loc_cargo, loc_car).miles:
+                            car_counter += 1
+                    else:
+                        car_counter += 1
+                if car_counter != 0:
+                    if input_data.weight_min is not None and input_data.weight_max is not None:
+                        if input_data.weight_min <= i["weight"] <= input_data.weight_max:
+                            list_cargos_info.append(
+                                {"cargo_id": i['id'],
+                                 "weight": i["weight"],
+                                 "available_car": car_counter})
+                    elif input_data.weight_min is None and input_data.weight_max is not None:
+                        if i["weight"] <= input_data.weight_max:
+                            list_cargos_info.append(
+                                {"cargo_id": i['id'],
+                                 "weight": i["weight"],
+                                 "available_car": car_counter})
+                    elif input_data.weight_min is not None and input_data.weight_max is None:
+                        if input_data.weight_min <= i["weight"]:
+                            list_cargos_info.append(
+                                {"cargo_id": i['id'],
+                                 "weight": i["weight"],
+                                 "available_car": car_counter})
+                    else:
+                        list_cargos_info.append(
+                            {"cargo_id": i['id'],
+                             "weight": i["weight"],
+                             "available_car": car_counter})
+            return list_cargos_info
+    except Exception:
+        logger.error("filter_weight_miles_cargos has error", exc_info=True)

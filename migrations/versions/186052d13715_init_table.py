@@ -51,10 +51,14 @@ def upgrade() -> None:
     sa.PrimaryKeyConstraint('id')
     )
 
-    dir_name = os.path.dirname(__file__)
-    filename = os.path.join(dir_name, 'uszips.csv')
+    # dir_name = os.path.dirname(__file__)
+    # filename = os.path.join(dir_name, 'uszips.csv')
+    filename = '/home/user/app/migrations/versions/uszips.csv'
     path_with_command = f'cut -d "," -f 1,2,3,4,6 {filename}'
-    op.execute(f"copy location_db(zip, lat, lng, city, state_name) FROM PROGRAM '{path_with_command}' WITH (FORMAT CSV, HEADER);", execution_options=None)
+    op.execute(
+        f"copy location_db(zip, lat, lng, city, state_name) FROM PROGRAM '{path_with_command}' WITH (FORMAT CSV, HEADER);",
+        execution_options=None)
+
 
     conn = op.get_bind()
     res = conn.execute("select zip from location_db")
@@ -78,7 +82,7 @@ def upgrade() -> None:
         random_value.append(temp)
     op.bulk_insert(car_db, random_value)
 
-    # ### end Alembic commands ###
+    ### end Alembic commands ###
 
 
 def downgrade() -> None:

@@ -63,3 +63,13 @@
 - Фильтр списка грузов (вес, мили ближайших машин до грузов);
 - Автоматическое обновление локаций всех машин раз в 3 минуты (локация меняется на другую случайную).
 
+### Launch Instructions for Linux:
+All settings are in the [.env](./.env) file.
+
+In the terminal panel, run the following commands:
+
+```
+$ mkdir dbdata && sudo docker-compose up --build
+```
+
+Examples of queries in the postman collection [test_4.postman_collection.json](./test_4.postman_collection.json).
